@@ -5,23 +5,49 @@ const categorySelect = document.querySelector("#note-category");
 const errorMessage = document.querySelector("#error-message");
 const notesList = document.querySelector("#notes-list");
 const noteCount = document.querySelector("#note-count");
+const searchInput = document.querySelector("#search-input"); // NEW for Task 5
 
-// Our array to hold the note objects
-let notes = [];
+const STORAGE_KEY = "quicknotes-app-data"; // NEW for Task 5
 
-// ---------- 2. Render Function (Task 3) ----------
+// ---------- 2. Load and Save Data (Task 5 Persistence) ----------
+function loadNotes() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveNotes() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+}
+
+// Initialize notes from localStorage
+let notes = loadNotes();
+
+// ---------- 3. Render Function ----------
 function render() {
-  // Clear the current list
   notesList.innerHTML = "";
+  
+  // Get search term and make it lowercase for case-insensitive search
+  const searchTerm = searchInput.value.toLowerCase().trim();
 
-  // Loop through notes and build HTML for each
-  notes.forEach((note) => {
+  // Filter notes based on search
+  const filteredNotes = notes.filter((note) => 
+    note.text.toLowerCase().includes(searchTerm)
+  );
+
+  // Show "No notes match" message if search finds nothing
+  if (filteredNotes.length === 0 && searchTerm !== "") {
+    const noResults = document.createElement("li");
+    noResults.textContent = "No notes match your search.";
+    noResults.style.color = "#777";
+    noResults.style.fontStyle = "italic";
+    notesList.appendChild(noResults);
+  }
+
+  // Loop through filtered notes and build HTML
+  filteredNotes.forEach((note) => {
     const li = document.createElement("li");
-    li.classList.add("note");
-    // Add the specific category class for the colored border (Task 2 styling)
-    li.classList.add(`category-${note.category}`);
+    li.classList.add("note", `category-${note.category}`);
 
-    // Header div for category and date
     const headerDiv = document.createElement("div");
     headerDiv.classList.add("note-header");
 
@@ -36,26 +62,22 @@ function render() {
     headerDiv.appendChild(categorySpan);
     headerDiv.appendChild(dateSpan);
 
-    // Note text (using textContent for security!)
     const textP = document.createElement("p");
     textP.classList.add("note-text");
     textP.textContent = note.text;
 
-    // Delete button
     const deleteBtn = document.createElement("button");
     deleteBtn.classList.add("delete-btn");
     deleteBtn.textContent = "Delete";
-    // Closure: this button remembers the specific note.id it belongs to
     deleteBtn.addEventListener("click", () => deleteNote(note.id));
 
-    // Assemble the note card
     li.appendChild(headerDiv);
     li.appendChild(textP);
     li.appendChild(deleteBtn);
     notesList.appendChild(li);
   });
 
-  // Update the count message (Task 4)
+  // Update count
   if (notes.length === 0) {
     noteCount.textContent = "You have no notes yet.";
   } else if (notes.length === 1) {
@@ -65,49 +87,48 @@ function render() {
   }
 }
 
-// ---------- 3. Add Note with Validation (Tasks 3 & 4) ----------
+// ---------- 4. Add Note with Validation ----------
 form.addEventListener("submit", (event) => {
-  event.preventDefault(); // Stop page reload
+  event.preventDefault();
 
   const text = input.value.trim();
   const category = categorySelect.value;
 
-  // Validation 1: Empty check
   if (text === "") {
     errorMessage.textContent = "Please type a note first.";
-    return; // Stop the function here
+    return;
   }
 
-  // Validation 2: Length check
   if (text.length > 200) {
     errorMessage.textContent = "Notes must be 200 characters or fewer.";
-    return; // Stop the function here
+    return;
   }
 
-  // If we pass validation, clear any old errors
   errorMessage.textContent = "";
 
-  // Create the note object
   const newNote = {
-    id: Date.now(), // Unique ID based on current millisecond
+    id: Date.now(),
     text: text,
     category: category,
-    createdAt: new Date().toLocaleString(), // Readable date and time
+    createdAt: new Date().toLocaleString(),
   };
 
-  // Add to array, clear input, and re-render
   notes.push(newNote);
+  saveNotes(); // Save to localStorage
   input.value = "";
   input.focus();
   render();
 });
 
-// ---------- 4. Delete Note (Task 4) ----------
+// ---------- 5. Delete Note ----------
 function deleteNote(id) {
-  // Keep only the notes that do NOT match the deleted ID
   notes = notes.filter((note) => note.id !== id);
-  render(); // Re-render to update the screen and the count
+  saveNotes(); // Save to localStorage
+  render();
 }
 
-// ---------- 5. Initial Render ----------
+// ---------- 6. Search Event Listener (Task 5) ----------
+searchInput.addEventListener("input", render);
+
+// ---------- 7. Initial Render ----------
 render();
